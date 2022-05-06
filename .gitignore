@@ -399,3 +399,6 @@ FodyWeavers.xsd
 
 # shut up vscode
 .vscode
+
+# 2048 save file
+info.2048

@@ -1,5 +1,4 @@
-﻿using Discord;
-using Microsoft.Xna.Framework;
+﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System;
@@ -42,6 +41,7 @@ namespace _2048
         readonly Vector2 menupos = new Vector2(-512, 0);
         static double menuoffset;
         static bool menuleave = false;
+        static float multiplier = 1;
 
         // input
         KeyboardState kb;
@@ -63,12 +63,6 @@ namespace _2048
         static bool showstartmenu = true;
         static bool hasstarted = false;
 
-        // discord
-        Discord.Discord discord;
-        static int secondsSinceEpoch;
-        static ActivityManager activityManager;
-        static bool useDiscord = true;
-
         // debug
         static bool debug = false;
         static bool dosaving = true;
@@ -89,19 +83,35 @@ namespace _2048
 
         protected override void Initialize()
         {
-            // discord SDK
-            try {discord = new Discord.Discord(959054762681184296, (UInt64)Discord.CreateFlags.NoRequireDiscord);}
-            catch {useDiscord = false;}
-            if (useDiscord)
+            // scale to screen
+            // note that this does NOT increase texture resolution
+            if (GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height >= 2160)
             {
-                TimeSpan t = DateTime.UtcNow - new DateTime(1970, 1, 1);
-                secondsSinceEpoch = (int)t.TotalSeconds;
-                activityManager = discord.GetActivityManager();
+                // 4k or more
+                _graphics.PreferredBackBufferWidth = 1536;
+                _graphics.PreferredBackBufferHeight = 1536;
+                multiplier=3f;
             }
-
-            // set window size to 512x512
-            _graphics.PreferredBackBufferWidth = 512;
-            _graphics.PreferredBackBufferHeight = 512;
+            else if (GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height >= 1440)
+            {
+                // 1440p
+                _graphics.PreferredBackBufferWidth = 1024;
+                _graphics.PreferredBackBufferHeight = 1024;
+                multiplier=2f;
+            }
+            else if (GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height >= 1080)
+            {
+                // 1080p
+                _graphics.PreferredBackBufferWidth = 896;
+                _graphics.PreferredBackBufferHeight = 896;
+                multiplier=1.75f;
+            }
+            else
+            {
+                // less than 1080p
+                _graphics.PreferredBackBufferWidth = 512;
+                _graphics.PreferredBackBufferHeight = 512;
+            }
             _graphics.ApplyChanges();
 
             // initialise grid
@@ -165,29 +175,12 @@ namespace _2048
             // dispose spritebatch, graphics manager, and discord
             _spriteBatch.Dispose();
             _graphics.Dispose();
-            if (useDiscord) discord.Dispose();
 
             base.OnExiting(sender, args);
         }
 
-        // initialise discord networking
-        void InitNetworking(Int64 lobbyID)
-        {
-            var lobbyManager = discord.GetLobbyManager();
-            lobbyManager.ConnectNetwork(lobbyID);
-            lobbyManager.OpenNetworkChannel(lobbyID, 0, true);
-            Console.WriteLine("Network channel opened");
-        }
-
         protected override void Update(GameTime gameTime)
         {
-            // discord
-            if (useDiscord)
-            {
-                try { discord.RunCallbacks(); }
-                catch (Exception e) { Console.WriteLine(e.Message); }
-            }
-
             // debug mode
             if (debug)
             {
@@ -195,13 +188,13 @@ namespace _2048
                 ms = Mouse.GetState();
                 if (ms.LeftButton==ButtonState.Pressed&&lastms.LeftButton==ButtonState.Released && !won && !lost)
                 {
-                    grid[(int)(ms.Y / 128),(int)(ms.X / 128)].Value *= 2;
-                    if (grid[(int)(ms.Y / 128),(int)(ms.X / 128)].Value == 0) grid[(int)(ms.Y / 128),(int)(ms.X / 128)].Value = 2;
+                    grid[(int)((ms.Y/multiplier) / 128),(int)((ms.X/multiplier) / 128)].Value *= 2;
+                    if (grid[(int)((ms.Y/multiplier) / 128),(int)((ms.X/multiplier) / 128)].Value == 0) grid[(int)((ms.Y/multiplier) / 128),(int)((ms.X/multiplier) / 128)].Value = 2;
                 }
                 else if (ms.RightButton==ButtonState.Pressed&&lastms.RightButton==ButtonState.Released && !won && !lost)
                 {
-                    grid[(int)(ms.Y / 128),(int)(ms.X / 128)].Value /= 2;
-                    if (grid[(int)(ms.Y / 128),(int)(ms.X / 128)].Value == 1) grid[(int)(ms.Y / 128),(int)(ms.X / 128)].Value = 0;
+                    grid[(int)((ms.Y/multiplier) / 128),(int)((ms.X/multiplier) / 128)].Value /= 2;
+                    if (grid[(int)((ms.Y/multiplier) / 128),(int)((ms.X/multiplier) / 128)].Value == 1) grid[(int)((ms.Y/multiplier) / 128),(int)((ms.X/multiplier) / 128)].Value = 0;
                 }
             }
 
@@ -211,9 +204,6 @@ namespace _2048
                 shouldresetgrid = false;
                 if (doTileSpawn) {SpawnRandom(); SpawnRandom();} // spawn 2 tiles
                 currentHighest = 0;
-
-                // discord
-                UpdateDiscord();
             }
 
             if (!menuleave)
@@ -370,7 +360,6 @@ namespace _2048
                 if (GetHightestTile() > currentHighest)
                 {
                     currentHighest = GetHightestTile();
-                    UpdateDiscord();
                 }
             }
 
@@ -385,6 +374,11 @@ namespace _2048
             iterate through the whole grid and compare values in a switch statement,
             load the texture depending on what value the square has
             */
+
+            // render at 512x512 resolution first
+            SpriteBatch targetbatch = new SpriteBatch(GraphicsDevice);
+            RenderTarget2D rendertarget = new RenderTarget2D(GraphicsDevice, 512, 512);
+            GraphicsDevice.SetRenderTarget(rendertarget);
 
             GraphicsDevice.Clear(Color.DimGray);
             _spriteBatch.Begin();
@@ -561,6 +555,13 @@ namespace _2048
                 "\ndoTileSpawn (F2): "+doTileSpawn.ToString()+"\nslowAnimate (F4): "+slowAnimate.ToString(), Vector2.Zero, Color.Black);
             }
             _spriteBatch.End();
+
+            // scale up to window size
+            _graphics.GraphicsDevice.SetRenderTarget(null);
+            _spriteBatch.Begin();
+            _spriteBatch.Draw(rendertarget, new Rectangle(0, 0, (int)(512*multiplier), (int)(512*multiplier)), Color.White);
+            _spriteBatch.End();
+
             base.Draw(gameTime);
         }
 
@@ -916,28 +917,6 @@ namespace _2048
             br.Close();
             stream.Close();
             return highest;
-        }
-
-        // update discord rich presence
-        static void UpdateDiscord()
-        {
-            if (!useDiscord) return;
-            string status;
-            if (debug) status = "Debug Mode";
-            else status = "Sliding Tiles";
-            var activity = new Discord.Activity
-            {
-                Details = "Highest Tile: " + GetHightestTile().ToString(),
-                State = status,
-                Timestamps = {
-                    Start = secondsSinceEpoch
-                },
-                Assets = {
-                    LargeImage = "icon",
-                    LargeText = "2048"
-                }
-            };
-            activityManager.UpdateActivity(activity, (result) => { });
         }
     }
 }
