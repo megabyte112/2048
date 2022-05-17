@@ -154,7 +154,7 @@ namespace _2048
             // if the game hasn't been won or lost, save the grid
             if (!won && !lost) Save();
 
-            // dispose every texture
+            // dispose everything
             t0.Dispose();
             t2.Dispose();
             t4.Dispose();
@@ -171,8 +171,6 @@ namespace _2048
             winmenu.Dispose();
             loadsave.Dispose();
             startmenu.Dispose();
-
-            // dispose spritebatch, graphics manager, and discord
             _spriteBatch.Dispose();
             _graphics.Dispose();
 
@@ -561,6 +559,12 @@ namespace _2048
             _spriteBatch.Begin();
             _spriteBatch.Draw(rendertarget, new Rectangle(0, 0, (int)(512*multiplier), (int)(512*multiplier)), Color.White);
             _spriteBatch.End();
+
+            // dispose of render target and targetbatch
+            rendertarget.Dispose();
+            targetbatch.Dispose();
+            // this prevents memory leaks!
+
 
             base.Draw(gameTime);
         }
