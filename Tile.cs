@@ -78,8 +78,8 @@ namespace _2048
         }
         public float GetOldAlpha()
         {
-            if (FadeOutOld > 10) return 1f;
-            return (float)FadeOutOld/10f;
+            // if (FadeOutOld > 5) return 1f;
+            return (float)FadeOutOld/20f;
         }
 
         // updates animation timers
@@ -88,7 +88,7 @@ namespace _2048
         {
             if (AnimationTimer>384d) AnimationTimer = 384d;
             if (OldTimer>384d) OldTimer = 384d;
-            if (AnimationTimer > 2&&!slowAnimate) AnimationTimer*=0.75d;
+            if (AnimationTimer > 2&&!slowAnimate) AnimationTimer*=0.625d;
             else if (AnimationTimer > 2&&slowAnimate) AnimationTimer*=0.96875d;
             else AnimationTimer = 0;
             if (OldTimer > 2&&!slowAnimate) OldTimer*=0.75d;

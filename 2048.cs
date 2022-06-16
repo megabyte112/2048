@@ -9,9 +9,16 @@ namespace _2048
 {
     public class _2048 : Game
     {
-        private GraphicsDeviceManager _graphics;
+        public static GraphicsDeviceManager _graphics;
         private SpriteBatch _spriteBatch;
         static readonly Random random = new Random();
+
+        // window
+        Vector2 windowOffset = Vector2.Zero;
+        Vector2 windowspeed = Vector2.Zero;
+        Point defaultWindowPos;
+        const int movementamount = 1;
+        float movementfactor;
 
         // grid
         static Tile[,] grid = new Tile[4,4];
@@ -114,6 +121,8 @@ namespace _2048
             }
             _graphics.ApplyChanges();
 
+            defaultWindowPos = Window.Position;
+
             // initialise grid
             grid = GetEmptyGrid();
             base.Initialize();
@@ -179,6 +188,27 @@ namespace _2048
 
         protected override void Update(GameTime gameTime)
         {
+            windowOffset += windowspeed;
+            movementfactor = movementamount * multiplier * (CountNotZero(grid)/2);
+            if (windowspeed.X > 0) windowspeed.X--;
+            if (windowspeed.X < 0) windowspeed.X++;
+            if (windowspeed.Y > 0) windowspeed.Y--;
+            if (windowspeed.Y < 0) windowspeed.Y++;
+            if (windowspeed == Vector2.Zero)
+            {
+                float easefactor = 0.9375f;
+                if (windowOffset.X > 1) windowOffset.X *= easefactor;
+                if (windowOffset.X < -1) windowOffset.X *= easefactor;
+                if (windowOffset.Y > 1) windowOffset.Y *= easefactor;
+                if (windowOffset.Y < -1) windowOffset.Y *= easefactor;
+                if (windowOffset.X < 1 && windowOffset.X > -1) windowOffset.X = 0;
+                if (windowOffset.Y < 1 && windowOffset.Y > -1) windowOffset.Y = 0;
+            }
+            float maxspeed = 64f;
+            if (windowOffset.X > maxspeed || windowOffset.X < -maxspeed ||
+            windowOffset.Y > maxspeed ||windowOffset.Y < -maxspeed) windowspeed = Vector2.Zero;
+            Window.Position = defaultWindowPos + new Point((int)windowOffset.X, (int)windowOffset.Y);
+
             // debug mode
             if (debug)
             {
@@ -304,15 +334,19 @@ namespace _2048
                         break;
                     case Keys.Left:
                         if (!won) grid = MoveLeft(grid);
+                        windowspeed.X -= movementfactor;
                         break;
                     case Keys.Right:
                         if (!won) grid = MoveRight(grid);
+                        windowspeed.X += movementfactor;
                         break;
                     case Keys.Up:
                         if (!won) grid = MoveUp(grid);
+                        windowspeed.Y -= movementfactor;
                         break;
                     case Keys.Down:
                         if (!won) grid = MoveDown(grid);
+                        windowspeed.Y += movementfactor;
                         break;
                     case Keys.F3:
                         debug = !debug;
@@ -605,10 +639,16 @@ namespace _2048
                 int ypos = random.Next(0, 4);
                 if (grid[ypos, xpos].Value == 0)
                 {
-                    grid[ypos, xpos] = new Tile(possibleSpawns[random.Next(0, 2)]);
+                    if (random.Next(0, 9) != 0)
+                    {
+                        grid[ypos, xpos] = new Tile(2);
+                    }
+                    else
+                    {
+                        grid[ypos, xpos] = new Tile(4);
+                    }
                 }
             } while (IsEqual(grid, lastgrid));
-            // if (IsFull()) lost = true;
         }
 
         // move everything as far as possible,
