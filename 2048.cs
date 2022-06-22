@@ -17,7 +17,7 @@ namespace _2048
         Vector2 windowOffset = Vector2.Zero;
         Vector2 windowspeed = Vector2.Zero;
         Point defaultWindowPos;
-        const int movementamount = 1;
+        const float movementamount = 1f;
         float movementfactor;
 
         // grid
@@ -189,7 +189,7 @@ namespace _2048
         protected override void Update(GameTime gameTime)
         {
             windowOffset += windowspeed;
-            movementfactor = movementamount * multiplier * (CountNotZero(grid)/2);
+            movementfactor = multiplier * (GetTileSum(grid)/64);
             if (windowspeed.X > 0) windowspeed.X--;
             if (windowspeed.X < 0) windowspeed.X++;
             if (windowspeed.Y > 0) windowspeed.Y--;
@@ -840,6 +840,13 @@ namespace _2048
             } while (!IsEqual(grid, lastgrid));
             ResetMergeState();
             return grid;
+        }
+
+        static int GetTileSum(Tile[,] grid)
+        {
+            int sum = 0;
+            foreach (var x in grid) sum += x.Value;
+            return sum;
         }
         
         // compare 2 tile arrays and return true if they are equal
