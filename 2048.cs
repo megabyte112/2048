@@ -76,6 +76,7 @@ namespace _2048
         static double framerate;
         static bool doTileSpawn = true;
         static bool slowAnimate = false;
+        static bool doWindowMove = true;
 
         public _2048()
         {
@@ -188,12 +189,14 @@ namespace _2048
 
         protected override void Update(GameTime gameTime)
         {
+            // window
             windowOffset += windowspeed;
-            movementfactor = multiplier * (GetTileSum(grid)/64);
+            movementfactor = (GetTileSum(grid)/64);
             if (windowspeed.X > 0) windowspeed.X--;
             if (windowspeed.X < 0) windowspeed.X++;
             if (windowspeed.Y > 0) windowspeed.Y--;
             if (windowspeed.Y < 0) windowspeed.Y++;
+            if (windowspeed.X < 1 && windowspeed.X > -1 && windowspeed.Y > -1 && windowspeed.Y < 1) windowspeed = Vector2.Zero;
             if (windowspeed == Vector2.Zero)
             {
                 float easefactor = 0.9375f;
@@ -204,10 +207,12 @@ namespace _2048
                 if (windowOffset.X < 1 && windowOffset.X > -1) windowOffset.X = 0;
                 if (windowOffset.Y < 1 && windowOffset.Y > -1) windowOffset.Y = 0;
             }
-            float maxspeed = 64f;
+            float maxspeed = 80f;
             if (windowOffset.X > maxspeed || windowOffset.X < -maxspeed ||
             windowOffset.Y > maxspeed ||windowOffset.Y < -maxspeed) windowspeed = Vector2.Zero;
-            Window.Position = defaultWindowPos + new Point((int)windowOffset.X, (int)windowOffset.Y);
+
+            // move the window
+            if (doWindowMove) Window.Position = defaultWindowPos + new Point((int)windowOffset.X, (int)windowOffset.Y);
 
             // debug mode
             if (debug)
@@ -385,9 +390,13 @@ namespace _2048
                     case Keys.F4:
                         if (debug) slowAnimate = !slowAnimate;
                         break;
+                    case Keys.F5:
+                        doWindowMove = !doWindowMove;
+                        break;
                 }
                 // spawn a random tile if there was a change
                 if (!IsEqual(grid, lastgrid)&&doTileSpawn) SpawnRandom();
+                else windowspeed *= 0.25f;
 
                 if (GetHightestTile() > currentHighest)
                 {
@@ -413,7 +422,7 @@ namespace _2048
             GraphicsDevice.SetRenderTarget(rendertarget);
 
             GraphicsDevice.Clear(Color.DimGray);
-            _spriteBatch.Begin();
+            _spriteBatch.Begin(samplerState:SamplerState.PointClamp);
 
             for (int y = 0; y < 4; y++)
             {
@@ -584,7 +593,7 @@ namespace _2048
                 _spriteBatch.DrawString(font, "debug (F3)\nSAVING IS DISABLED\nLMB/RMB = increment/decrement\n\nVALUES\n"+
                 "framesPerSecond: "+framerate+"\nnonZeroCount: "+CountNotZero(grid)+
                 "\nmaxTileValue: "+GetHightestTile()+"\nisFull: "+IsFull()+"\noutOfMoves: "+OutOfMoves()+
-                "\ndoTileSpawn (F2): "+doTileSpawn.ToString()+"\nslowAnimate (F4): "+slowAnimate.ToString(), Vector2.Zero, Color.Black);
+                "\ntileSum: "+GetTileSum(grid).ToString()+"\ndoTileSpawn (F2): "+doTileSpawn.ToString()+"\nslowAnimate (F4): "+slowAnimate.ToString(), Vector2.Zero, Color.Black);
             }
             _spriteBatch.End();
 
@@ -658,7 +667,11 @@ namespace _2048
             Tile[,] lastgrid;
             
             // set all AnimationTimer values to 0
-            foreach (var x in grid) x.AnimationTimer = 0;
+            foreach (var x in grid)
+            {
+                x.AnimationTimer = 0;
+                x.OldTimer = 0;
+            }
 
             int numberofmoves = 0;
 
@@ -705,7 +718,11 @@ namespace _2048
             Tile[,] lastgrid;
             
             // set all AnimationTimer values to 0
-            foreach (var x in grid) x.AnimationTimer = 0;
+            foreach (var x in grid)
+            {
+                x.AnimationTimer = 0;
+                x.OldTimer = 0;
+            }
 
             int numberofmoves = 0;
 
@@ -752,7 +769,11 @@ namespace _2048
             Tile[,] lastgrid;
             
             // set all AnimationTimer values to 0
-            foreach (var x in grid) x.AnimationTimer = 0;
+            foreach (var x in grid)
+            {
+                x.AnimationTimer = 0;
+                x.OldTimer = 0;
+            }
 
             int numberofmoves = 0;
 
@@ -799,7 +820,11 @@ namespace _2048
             Tile[,] lastgrid;
             
             // set all AnimationTimer values to 0
-            foreach (var x in grid) x.AnimationTimer = 0;
+            foreach (var x in grid)
+            {
+                x.AnimationTimer = 0;
+                x.OldTimer = 0;
+            }
 
             int numberofmoves = 0;
 
