@@ -457,7 +457,7 @@ namespace _2048
                         Reset();
                         if (won || lost || showstartmenu)
                         {
-                            menuSFX.Play();
+                            menuSFX.Play(0.5f, 0f, 0f);
                             menuleave=true;
                             menuoffset = -1;
                         }
