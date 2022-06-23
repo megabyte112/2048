@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework.Input;
 using System;
 using System.IO;
 using System.Linq;
+using DiscordRPC;
 
 namespace _2048
 {
@@ -11,7 +12,7 @@ namespace _2048
     {
         public static GraphicsDeviceManager _graphics;
         private SpriteBatch _spriteBatch;
-        static readonly Random random = new Random();
+        DiscordRpcClient dc;
 
         // window
         Vector2 windowOffset = Vector2.Zero;
@@ -22,8 +23,7 @@ namespace _2048
 
         // grid
         static Tile[,] grid = new Tile[4,4];
-        static readonly int[] possibleSpawns = { 2, 4 };
-        static int currentHighest;
+        int currentHighest;
 
         // assets
         SpriteFont font;
@@ -46,9 +46,9 @@ namespace _2048
 
         // menu
         readonly Vector2 menupos = new Vector2(-512, 0);
-        static double menuoffset;
-        static bool menuleave = false;
-        static float multiplier = 1;
+        double menuoffset;
+        bool menuleave = false;
+        float multiplier = 1;
 
         // input
         KeyboardState kb;
@@ -59,24 +59,24 @@ namespace _2048
         MouseState lastms;
 
         //gameplay
-        static bool won = false;
-        static bool lost = false;
-        static bool lastlost = false;
-        static bool lastwon = false;
+        bool won = false;
+        bool lost = false;
+        bool lastlost = false;
+        bool lastwon = false;
         public static bool shouldresetgrid = false;
-        static bool showautosave = false;
-        static int notificationtime = 0;
-        static float notifoffset;
-        static bool showstartmenu = true;
-        static bool hasstarted = false;
+        bool showautosave = false;
+        int notificationtime = 0;
+        float notifoffset;
+        bool showstartmenu = true;
+        bool hasstarted = false;
 
         // debug
-        static bool debug = false;
-        static bool dosaving = true;
-        static double framerate;
-        static bool doTileSpawn = true;
-        static bool slowAnimate = false;
-        static bool doWindowMove = true;
+        bool debug = false;
+        bool dosaving = true;
+        double framerate;
+        bool doTileSpawn = true;
+        bool slowAnimate = false;
+        bool doWindowMove = true;
 
         public _2048()
         {
@@ -126,6 +126,29 @@ namespace _2048
 
             // initialise grid
             grid = GetEmptyGrid();
+
+            // try discord
+            try
+            {
+                dc = new DiscordRpcClient("959054762681184296");
+                dc.Initialize();
+                dc.SetPresence(new RichPresence()
+                {
+                    Details = "Waiting...",
+                    Assets = new Assets()
+                    {
+                        LargeImageKey = "icon",
+                        LargeImageText = "2048"
+                    },
+                    Buttons = new Button[]{ new Button()
+                    {
+                        Label = "Play 2048",
+                        Url = "https://megabyte112.itch.io/2048"
+                    }}
+                });
+            }
+            catch {}
+
             base.Initialize();
         }
 
@@ -162,7 +185,7 @@ namespace _2048
         protected override void OnExiting(object sender, EventArgs args)
         {
             // if the game hasn't been won or lost, save the grid
-            if (!won && !lost) Save();
+            if (!won && !lost) Save(dosaving);
 
             // dispose everything
             t0.Dispose();
@@ -181,6 +204,7 @@ namespace _2048
             winmenu.Dispose();
             loadsave.Dispose();
             startmenu.Dispose();
+            dc.Dispose();
             _spriteBatch.Dispose();
             _graphics.Dispose();
 
@@ -191,7 +215,7 @@ namespace _2048
         {
             // window
             windowOffset += windowspeed;
-            movementfactor = (GetTileSum(grid)/64);
+            movementfactor = (GetTileSum(grid)/128);
             if (windowspeed.X > 0) windowspeed.X--;
             if (windowspeed.X < 0) windowspeed.X++;
             if (windowspeed.Y > 0) windowspeed.Y--;
@@ -397,11 +421,28 @@ namespace _2048
                 // spawn a random tile if there was a change
                 if (!IsEqual(grid, lastgrid)&&doTileSpawn) SpawnRandom();
                 else windowspeed *= 0.25f;
+            }
 
-                if (GetHightestTile() > currentHighest)
+            if (GetHightestTile() != currentHighest)
+            {
+                currentHighest = GetHightestTile();
+
+                // discord RPC
+                dc.SetPresence(new RichPresence()
                 {
-                    currentHighest = GetHightestTile();
-                }
+                    Details = "Sliding some tiles",
+                    State = "Highest tile: "+currentHighest,
+                    Assets = new Assets()
+                    {
+                        LargeImageKey = "icon",
+                        LargeImageText = "2048"
+                    },
+                    Buttons = new Button[]{ new Button()
+                    {
+                        Label = "Play 2048",
+                        Url = "https://megabyte112.itch.io/2048"
+                    }}
+                });
             }
 
             if (debug) framerate = Math.Round(1 / gameTime.ElapsedGameTime.TotalSeconds);
@@ -641,6 +682,7 @@ namespace _2048
         // repeat until a valid location is chosen
         static void SpawnRandom()
         {
+            Random random = new Random();
             Tile[,] lastgrid = CopyGrid(grid);
             do
             {
@@ -944,7 +986,7 @@ namespace _2048
         }
 
         // save the game
-        static void Save()
+        static void Save(bool dosaving)
         {
             if (!dosaving || GetHightestTile() <= 8) return;
             string savename = "info.2048";
