@@ -176,6 +176,18 @@
 /processorParam:TextureFormat=Color
 /build:loadsave.png
 
+#begin lose.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:lose.wav
+
+#begin menu.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:menu.wav
+
 #begin menulost.png
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -211,4 +223,28 @@
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
 /build:menuwon.png
+
+#begin merge.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:merge.wav
+
+#begin nope.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:nope.wav
+
+#begin slide.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:slide.wav
+
+#begin win.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:win.wav
 

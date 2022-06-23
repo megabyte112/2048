@@ -1,6 +1,7 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using Microsoft.Xna.Framework.Audio;
 using System;
 using System.IO;
 using System.Linq;
@@ -43,6 +44,12 @@ namespace _2048
         Texture2D winmenu;
         Texture2D loadsave;
         Texture2D startmenu;
+        SoundEffect slideSFX;
+        SoundEffect menuSFX;
+        SoundEffect winSFX;
+        SoundEffect loseSFX;
+        SoundEffect mergeSFX;
+        SoundEffect nopeSFX;
 
         // menu
         readonly Vector2 menupos = new Vector2(-512, 0);
@@ -180,6 +187,14 @@ namespace _2048
 
             // notifications
             loadsave = Content.Load<Texture2D>("loadsave");
+
+            // sounds
+            slideSFX = Content.Load<SoundEffect>("slide");
+            menuSFX = Content.Load<SoundEffect>("menu");
+            winSFX = Content.Load<SoundEffect>("win");
+            loseSFX = Content.Load<SoundEffect>("lose");
+            mergeSFX = Content.Load<SoundEffect>("merge");
+            nopeSFX = Content.Load<SoundEffect>("nope");
         }
 
         protected override void OnExiting(object sender, EventArgs args)
@@ -200,6 +215,12 @@ namespace _2048
             t512.Dispose();
             t1024.Dispose();
             t2048.Dispose();
+            slideSFX.Dispose();
+            menuSFX.Dispose();
+            winSFX.Dispose();
+            loseSFX.Dispose();
+            mergeSFX.Dispose();
+            nopeSFX.Dispose();
             losemenu.Dispose();
             winmenu.Dispose();
             loadsave.Dispose();
@@ -272,11 +293,13 @@ namespace _2048
             if (OutOfMoves()&&!lastlost&&CountNotZero(grid)>0)
             {
                 lost = true;
+                loseSFX.Play();
                 menuoffset = 8192;
             }
             else if ((GetHightestTile() == 2048)&&!lastwon)
             {
                 won = true;
+                winSFX.Play();
                 menuoffset = 8192;
             }
 
@@ -356,26 +379,64 @@ namespace _2048
             foreach (var x in changedkeys)
             {
                 var lastgrid = CopyGrid(grid);
+                bool didMerge = false;
+                Random r = new Random();
                 switch (x)
                 {
                     case Keys.Escape:
                         Exit();
                         break;
                     case Keys.Left:
-                        if (!won) grid = MoveLeft(grid);
-                        windowspeed.X -= movementfactor;
+                        if (!won)
+                        {
+                            grid = MoveLeft(grid, ref didMerge);
+                            windowspeed.X -= movementfactor;
+                            if (didMerge) mergeSFX.Play(1f, (r.Next(60,106)/100f)-1f, 0f);
+                            if (IsEqual(grid, lastgrid)&& GetHightestTile() > 0)
+                            {
+                                nopeSFX.Play(0.75f, 0f, 0f);
+                                windowspeed *= 0.25f;
+                            }
+                        }
                         break;
                     case Keys.Right:
-                        if (!won) grid = MoveRight(grid);
-                        windowspeed.X += movementfactor;
+                        if (!won)
+                        {
+                            grid = MoveRight(grid, ref didMerge);
+                            windowspeed.X += movementfactor;
+                            if (didMerge) mergeSFX.Play(1f, (r.Next(60,106)/100f)-1f, 0f);
+                            if (IsEqual(grid, lastgrid)&& GetHightestTile() > 0)
+                            {
+                                nopeSFX.Play(0.75f, 0f, 0f);
+                                windowspeed *= 0.25f;
+                            }
+                        }
                         break;
                     case Keys.Up:
-                        if (!won) grid = MoveUp(grid);
-                        windowspeed.Y -= movementfactor;
+                        if (!won)
+                        {
+                            grid = MoveUp(grid, ref didMerge);
+                            windowspeed.Y -= movementfactor;
+                            if (didMerge) mergeSFX.Play(1f, (r.Next(60,106)/100f)-1f, 0f);
+                            if (IsEqual(grid, lastgrid)&& GetHightestTile() > 0)
+                            {
+                                nopeSFX.Play(0.75f, 0f, 0f);
+                                windowspeed *= 0.25f;
+                            }
+                        }
                         break;
                     case Keys.Down:
-                        if (!won) grid = MoveDown(grid);
-                        windowspeed.Y += movementfactor;
+                        if (!won)
+                        {
+                            grid = MoveDown(grid, ref didMerge);
+                            windowspeed.Y += movementfactor;
+                            if (didMerge) mergeSFX.Play(1f, (r.Next(60,106)/100f)-1f, 0f);
+                            if (IsEqual(grid, lastgrid)&& GetHightestTile() > 0)
+                            {
+                                nopeSFX.Play(0.75f, 0f, 0f);
+                                windowspeed *= 0.25f;
+                            }
+                        }
                         break;
                     case Keys.F3:
                         debug = !debug;
@@ -396,6 +457,7 @@ namespace _2048
                         Reset();
                         if (won || lost || showstartmenu)
                         {
+                            menuSFX.Play();
                             menuleave=true;
                             menuoffset = -1;
                         }
@@ -419,8 +481,11 @@ namespace _2048
                         break;
                 }
                 // spawn a random tile if there was a change
-                if (!IsEqual(grid, lastgrid)&&doTileSpawn) SpawnRandom();
-                else windowspeed *= 0.25f;
+                if (!IsEqual(grid, lastgrid)&&doTileSpawn)
+                {
+                    SpawnRandom();
+                    slideSFX.Play(0.75f, (r.Next(90,111)/100f)-1f, 0f);
+                }
             }
 
             if (GetHightestTile() != currentHighest)
@@ -704,7 +769,7 @@ namespace _2048
 
         // move everything as far as possible,
         // repeat until you can't move them anymore
-        static Tile[,] MoveLeft(Tile[,] grid)
+        static Tile[,] MoveLeft(Tile[,] grid, ref bool didMerge)
         {
             Tile[,] lastgrid;
             
@@ -735,6 +800,7 @@ namespace _2048
                         }
                         else if (grid[y, x].Value > 0 && grid[y, x].Value == grid[y, x - 1].Value && !grid[y, x].HasMerged && !grid[y, x - 1].HasMerged)
                         {
+                            didMerge = true;
                             grid[y, x].Value = 0;
                             grid[y, x - 1].Value *= 2;
                             grid[y, x - 1].HasMerged = true;
@@ -755,7 +821,7 @@ namespace _2048
             ResetMergeState();
             return grid;
         }
-        static Tile[,] MoveRight(Tile[,] grid)
+        static Tile[,] MoveRight(Tile[,] grid, ref bool didMerge)
         {
             Tile[,] lastgrid;
             
@@ -786,6 +852,7 @@ namespace _2048
                         }
                         else if (grid[y, x].Value > 0 && grid[y, x].Value == grid[y, x + 1].Value && !grid[y, x].HasMerged && !grid[y, x + 1].HasMerged)
                         {
+                            didMerge = true;
                             grid[y, x].Value = 0;
                             grid[y, x + 1].Value *= 2;
                             grid[y, x + 1].HasMerged = true;
@@ -806,7 +873,7 @@ namespace _2048
             ResetMergeState();
             return grid;
         }
-        static Tile[,] MoveUp(Tile[,] grid)
+        static Tile[,] MoveUp(Tile[,] grid, ref bool didMerge)
         {
             Tile[,] lastgrid;
             
@@ -837,6 +904,7 @@ namespace _2048
                         }
                         else if (grid[y, x].Value > 0 && grid[y, x].Value == grid[y - 1, x].Value && !grid[y, x].HasMerged && !grid[y - 1, x].HasMerged)
                         {
+                            didMerge = true;
                             grid[y, x].Value = 0;
                             grid[y - 1, x].Value *= 2;
                             grid[y - 1, x].HasMerged = true;
@@ -857,7 +925,7 @@ namespace _2048
             ResetMergeState();
             return grid;
         }
-        static Tile[,] MoveDown(Tile[,] grid)
+        static Tile[,] MoveDown(Tile[,] grid, ref bool didMerge)
         {
             Tile[,] lastgrid;
             
@@ -888,6 +956,7 @@ namespace _2048
                         }
                         else if (grid[y, x].Value > 0 && grid[y, x].Value == grid[y + 1, x].Value && !grid[y, x].HasMerged && !grid[y + 1, x].HasMerged)
                         {
+                            didMerge = true;
                             grid[y, x].Value = 0;
                             grid[y + 1, x].Value *= 2;
                             grid[y + 1, x].HasMerged = true;
@@ -969,10 +1038,11 @@ namespace _2048
         {
             Tile[,] lastgrid = CopyGrid(grid);
             Tile[,] testgrid = CopyGrid(grid);
-            if (!IsEqual(MoveUp(testgrid), lastgrid)) return false;
-            if (!IsEqual(MoveDown(testgrid), lastgrid)) return false;
-            if (!IsEqual(MoveLeft(testgrid), lastgrid)) return false;
-            if (!IsEqual(MoveRight(testgrid), lastgrid)) return false;
+            bool didMerge = false;
+            if (!IsEqual(MoveUp(testgrid, ref didMerge), lastgrid)) return false;
+            if (!IsEqual(MoveDown(testgrid, ref didMerge), lastgrid)) return false;
+            if (!IsEqual(MoveLeft(testgrid, ref didMerge), lastgrid)) return false;
+            if (!IsEqual(MoveRight(testgrid, ref didMerge), lastgrid)) return false;
             return true;
         }
 
