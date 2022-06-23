@@ -236,7 +236,7 @@ namespace _2048
         {
             // window
             windowOffset += windowspeed;
-            movementfactor = (GetTileSum(grid)/128);
+            movementfactor = (GetTileSum(grid)/128f);
             if (windowspeed.X > 0) windowspeed.X--;
             if (windowspeed.X < 0) windowspeed.X++;
             if (windowspeed.Y > 0) windowspeed.Y--;
